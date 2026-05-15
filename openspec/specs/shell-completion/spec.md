@@ -1,4 +1,7 @@
-## ADDED Requirements
+## Purpose
+Provides shell tab-completion scripts and the `wrt-cd` fzf-based task navigator function.
+
+## Requirements
 
 ### Requirement: Completion generation command
 The tool SHALL provide a `wrt completion <shell>` command that outputs a completion script for the specified shell. Supported shells SHALL be: `bash`, `zsh`, `fish`. For `bash` and `zsh`, the output SHALL include a `wrt-cd` shell function definition appended after the cobra-generated completion script. The function SHALL pipe `wrt list` output to `fzf --header-lines=2`, and on a non-empty selection SHALL `cd` to the path returned by `wrt path`. Fish output SHALL NOT include `wrt-cd` (deferred).

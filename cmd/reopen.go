@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/dburton90/wrt/internal/gitutil"
+	"github.com/dburton90/wrt/internal/registry"
 	"github.com/dburton90/wrt/internal/task"
 	"github.com/spf13/cobra"
 )
@@ -52,12 +53,17 @@ func runReopen(_ *cobra.Command, args []string) error {
 	var conflicted bool
 
 	for repoName, rs := range t.Repositories {
+		r, err := registry.Load(taskRoot, repoName)
+		if err != nil {
+			return fmt.Errorf("cannot reopen task %q: repo %q listed in task.json is not in the registry. Restore the registry entry or remove %q from task.json before reopening", name, repoName, repoName)
+		}
+
 		repoDir := filepath.Join(openDir, "repositories", repoName)
 		codeWorktree := filepath.Join(repoDir, "code")
 
 		// Recreate main worktree (branch already exists from before close)
 		fmt.Printf("Recreating worktree for %s on %s...\n", repoName, rs.TaskBranch)
-		if err := gitutil.WorktreeAddExisting(rs.RepoPath, codeWorktree, rs.TaskBranch); err != nil {
+		if err := gitutil.WorktreeAddExisting(r.Path, codeWorktree, rs.TaskBranch); err != nil {
 			return fmt.Errorf("recreating worktree for %s: %w", repoName, err)
 		}
 
@@ -81,7 +87,7 @@ func runReopen(_ *cobra.Command, args []string) error {
 		for _, bp := range rs.BackportBranches {
 			bpWorktree := filepath.Join(repoDir, "backports", bp.Version)
 			fmt.Printf("Recreating backport worktree %s/%s...\n", repoName, bp.Version)
-			if err := gitutil.WorktreeAddExisting(rs.RepoPath, bpWorktree, bp.Branch); err != nil {
+			if err := gitutil.WorktreeAddExisting(r.Path, bpWorktree, bp.Branch); err != nil {
 				return fmt.Errorf("recreating backport worktree %s/%s: %w", repoName, bp.Version, err)
 			}
 			bpPatchFile := filepath.Join(repoDir, repoName+"-backport-"+bp.Version+".patch")

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/dburton90/wrt/internal/gitutil"
+	"github.com/dburton90/wrt/internal/registry"
 	"github.com/dburton90/wrt/internal/task"
 	"github.com/spf13/cobra"
 )
@@ -41,6 +42,11 @@ func runClose(_ *cobra.Command, args []string) error {
 
 	// Save patches and remove worktrees for each repo
 	for repoName, rs := range t.Repositories {
+		r, err := registry.Load(taskRoot, repoName)
+		if err != nil {
+			return fmt.Errorf("cannot close task %q: repo %q listed in task.json is not in the registry. Restore the registry entry or remove %q from task.json before closing", name, repoName, repoName)
+		}
+
 		repoDir := filepath.Join(taskDir, "repositories", repoName)
 		codeWorktree := filepath.Join(repoDir, "code")
 
@@ -52,7 +58,7 @@ func runClose(_ *cobra.Command, args []string) error {
 				return fmt.Errorf("saving patch for %s: %w", repoName, err)
 			}
 			fmt.Printf("Removing worktree for %s...\n", repoName)
-			if err := gitutil.WorktreeRemove(rs.RepoPath, codeWorktree); err != nil {
+			if err := gitutil.WorktreeRemove(r.Path, codeWorktree); err != nil {
 				return fmt.Errorf("removing worktree for %s: %w", repoName, err)
 			}
 		}
@@ -67,7 +73,7 @@ func runClose(_ *cobra.Command, args []string) error {
 					return fmt.Errorf("saving backport patch for %s/%s: %w", repoName, bp.Version, err)
 				}
 				fmt.Printf("Removing backport worktree %s/%s...\n", repoName, bp.Version)
-				if err := gitutil.WorktreeRemove(rs.RepoPath, bpWorktree); err != nil {
+				if err := gitutil.WorktreeRemove(r.Path, bpWorktree); err != nil {
 					return fmt.Errorf("removing backport worktree for %s/%s: %w", repoName, bp.Version, err)
 				}
 			}

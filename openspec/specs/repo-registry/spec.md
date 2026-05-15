@@ -1,4 +1,7 @@
-## ADDED Requirements
+## Purpose
+Maintains the registry of known source repositories at `<task-root>/repos/`, including their on-disk paths, base branches, and branch-name templates.
+
+## Requirements
 
 ### Requirement: Repo registry location
 The tool SHALL store the repo registry at `<task-root>/repos/<repo-name>/repo.json`. Each registered repo occupies its own subdirectory.

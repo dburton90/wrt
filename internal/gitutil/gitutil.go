@@ -2,11 +2,16 @@ package gitutil
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
+
+// ErrNoUpstream is returned by Upstream when the branch has no upstream tracking ref.
+var ErrNoUpstream = errors.New("branch has no upstream tracking ref")
 
 // run executes a git command rooted at dir and returns combined output on error.
 func run(dir string, args ...string) error {
@@ -87,6 +92,78 @@ type PatchConflictError struct {
 
 func (e *PatchConflictError) Error() string {
 	return e.Output
+}
+
+// IsClean reports whether the worktree has no uncommitted changes (tracked or untracked).
+// On false, returns the list of dirty file paths parsed from `git status --porcelain`.
+func IsClean(worktreePath string) (bool, []string, error) {
+	cmd := exec.Command("git", "status", "--porcelain")
+	cmd.Dir = worktreePath
+	out, err := cmd.Output()
+	if err != nil {
+		return false, nil, fmt.Errorf("git status in %s: %w", worktreePath, err)
+	}
+	trimmed := bytes.TrimSpace(out)
+	if len(trimmed) == 0 {
+		return true, nil, nil
+	}
+	var files []string
+	for _, line := range bytes.Split(trimmed, []byte("\n")) {
+		if len(line) > 3 {
+			files = append(files, string(line[3:]))
+		}
+	}
+	return false, files, nil
+}
+
+// Upstream resolves the upstream tracking ref of branch in repoPath using
+// `git rev-parse --abbrev-ref <branch>@{upstream}`. Returns the remote and the
+// remote-side ref name (e.g. remote="origin", ref="main"). When the branch has
+// no upstream configured, returns ErrNoUpstream.
+func Upstream(repoPath, branch string) (remote, ref string, err error) {
+	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", branch+"@{upstream}")
+	cmd.Dir = repoPath
+	out, err := cmd.Output()
+	if err != nil {
+		return "", "", ErrNoUpstream
+	}
+	full := strings.TrimSpace(string(out))
+	idx := strings.IndexByte(full, '/')
+	if idx <= 0 {
+		return "", "", fmt.Errorf("unexpected upstream format %q for %s", full, branch)
+	}
+	return full[:idx], full[idx+1:], nil
+}
+
+// Fetch runs `git fetch <remote>` in the base repo.
+func Fetch(repoPath, remote string) error {
+	return run(repoPath, "fetch", remote)
+}
+
+// Rebase runs `git rebase <ontoRef>` in the worktree. On non-zero exit, the
+// underlying error includes the git output; callers can probe ConflictedFiles
+// to distinguish conflict from other failures.
+func Rebase(worktreePath, ontoRef string) error {
+	return run(worktreePath, "rebase", ontoRef)
+}
+
+// ConflictedFiles returns paths of files with unresolved merge conflicts in worktreePath.
+func ConflictedFiles(worktreePath string) ([]string, error) {
+	cmd := exec.Command("git", "diff", "--name-only", "--diff-filter=U")
+	cmd.Dir = worktreePath
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("git diff in %s: %w", worktreePath, err)
+	}
+	trimmed := bytes.TrimSpace(out)
+	if len(trimmed) == 0 {
+		return nil, nil
+	}
+	var files []string
+	for _, line := range bytes.Split(trimmed, []byte("\n")) {
+		files = append(files, string(line))
+	}
+	return files, nil
 }
 
 // HasCommitsAhead returns true if the branch in worktreePath has commits ahead of baseBranch.

@@ -230,7 +230,6 @@ func runRepoAdd(_ *cobra.Command, args []string) error {
 		t.Repositories = map[string]task.RepoState{}
 	}
 	t.Repositories[repoName] = task.RepoState{
-		RepoPath:         r.Path,
 		BaseBranch:       r.DefaultBaseBranch,
 		TaskBranch:       branch,
 		BackportBranches: []task.BackportState{},

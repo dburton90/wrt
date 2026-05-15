@@ -1,4 +1,7 @@
-## ADDED Requirements
+## Purpose
+Adds repository worktrees to a task on a freshly created task branch, detects the current task by walking up from CWD, and pins worktree paths to `repositories/<repo>/code/`.
+
+## Requirements
 
 ### Requirement: Task context detection
 Commands that operate on a task (`wrt repo add`, `wrt backport add`) SHALL detect the current task by traversing up from CWD looking for `task.json`, stopping at the filesystem root. If no `task.json` is found, the command SHALL error with a clear message.

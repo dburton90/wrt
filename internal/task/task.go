@@ -16,7 +16,6 @@ type BackportState struct {
 }
 
 type RepoState struct {
-	RepoPath         string          `json:"repo_path"`
 	BaseBranch       string          `json:"base_branch"`
 	TaskBranch       string          `json:"task_branch"`
 	BackportBranches []BackportState `json:"backport_branches"`

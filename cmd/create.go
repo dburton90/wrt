@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/dburton90/wrt/internal/task"
+	"github.com/dburton90/wrt/internal/template"
 	"github.com/spf13/cobra"
 )
 
@@ -30,7 +31,7 @@ func init() {
 }
 
 func runCreate(cmd *cobra.Command, args []string) error {
-	_, taskRoot := mustTaskRoot()
+	cfg, taskRoot := mustTaskRoot()
 
 	var name string
 	if len(args) > 0 {
@@ -75,6 +76,11 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("task %q already exists (closed). Use `wrt reopen %s` to reopen it.", name, name)
 	}
 
+	// Ensure task root layout and default template exist.
+	if _, err := initTaskRoot(taskRoot); err != nil {
+		return fmt.Errorf("initializing task root: %w", err)
+	}
+
 	taskDir := task.OpenDir(taskRoot, name)
 	t := &task.Task{
 		Name:        name,
@@ -84,11 +90,16 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	if err := task.Create(taskDir, t); err != nil {
 		return fmt.Errorf("creating task: %w", err)
 	}
-	if err := writeAgentsMD(taskDir, name); err != nil {
-		return fmt.Errorf("writing AGENTS.md: %w", err)
+
+	vars := map[string]string{
+		"task-id":   name,
+		"task-dir":  taskDir,
+		"task-root": taskRoot,
+		"user":      cfg.Username(),
 	}
-	if err := writeAcMD(taskDir); err != nil {
-		return fmt.Errorf("writing ac.md: %w", err)
+	templateDir := filepath.Join(taskRoot, "tasks", "task-template")
+	if err := template.Apply(templateDir, taskDir, vars); err != nil {
+		return fmt.Errorf("applying task template: %w", err)
 	}
 
 	fmt.Printf("Created task %q at %s\n", name, taskDir)

@@ -1,4 +1,7 @@
-## ADDED Requirements
+## Purpose
+Manages backport worktrees and branches for a task, letting a single task carry fixes targeting multiple release versions in parallel.
+
+## Requirements
 
 ### Requirement: Add backport worktree
 `wrt backport add <repo-name> <version>` SHALL look up the version alias in the repo's `backport_branches` map to resolve the base branch, create a new git branch using the backport branch template, and create a git worktree at `repositories/<repo-name>/backports/<version>/`. It SHALL update `task.json` to record the version in the repo's `backport_branches` list.
